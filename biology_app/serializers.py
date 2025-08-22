@@ -25,7 +25,13 @@ class QuestionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Question
-        fields = ['id', 'test', 'question_number' 'question_text', 'max_mark', 'standards']
+        fields = ['id', 'test', 'question_number', 'question_text', 'max_mark', 'standards']
+
+class TestListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Test
+        # This simple version only includes basic fields for the list view
+        fields = ['id', 'title', 'date_administered', 'assigned_class']
 
 # --- Test Serializer ---
 class TestSerializer(serializers.ModelSerializer):
