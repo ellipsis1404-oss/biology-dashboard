@@ -1,0 +1,31 @@
+// frontend/src/router/index.js
+
+import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
+import ClassDetailView from '../views/ClassDetailView.vue'
+// --- Import the new AdminView ---
+import AdminView from '../views/AdminView.vue'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomeView
+    },
+    {
+      path: '/classes/:id',
+      name: 'class-detail',
+      component: ClassDetailView
+    },
+    // --- ADD THIS NEW ROUTE OBJECT ---
+    {
+      path: '/admin',
+      name: 'admin',
+      component: AdminView
+    }
+  ]
+})
+
+export default router

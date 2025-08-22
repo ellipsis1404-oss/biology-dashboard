@@ -1,0 +1,14 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<div>
+    <h1>Upload Standards from Excel File</h1>
+    <p>Please ensure your Excel file has columns named: 'level', 'unit', 'code', 'description'</p>
+    
+    <form action="" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Upload File">
+    </form>
+</div>
+{% endblock %}
