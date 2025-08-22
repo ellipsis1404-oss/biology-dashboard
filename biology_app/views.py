@@ -12,7 +12,7 @@ import google.generativeai as genai
 from .models import BiologyClass, Student, Test, Question, Standard, Comment, Score
 # --- Import the new ScoreSerializer ---
 from .serializers import (
-    BiologyClassSerializer, StudentSerializer, TestSerializer, 
+    BiologyClassSerializer, StudentSerializer, TestSerializer, TestListSerializer,
     QuestionSerializer, StandardSerializer, CommentSerializer, StudentDetailSerializer, ScoreSerializer
 )
 
@@ -83,6 +83,13 @@ class TestViewSet(viewsets.ModelViewSet):
     serializer_class = TestSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['=assigned_class__id']
+
+    def get_serializer_class(self):
+        # If the action is 'list' (i.e., getting a list of tests)
+        if self.action == 'list':
+            return TestListSerializer
+        # Otherwise (for create, retrieve, update), use the full serializer
+        return TestSerializer
 
     @action(detail=True, methods=['post'])
     @transaction.atomic
