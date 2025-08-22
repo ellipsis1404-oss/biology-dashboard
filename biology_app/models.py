@@ -57,13 +57,19 @@ class Test(models.Model):
 # Represents a single question within a test
 class Question(models.Model):
     test = models.ForeignKey(Test, related_name='questions', on_delete=models.CASCADE)
+    question_number = models.PositiveIntegerField()
     question_text = models.CharField(max_length=255)
     max_mark = models.PositiveIntegerField()
     # A question can assess multiple standards (Many-to-Many relationship)
     standards = models.ManyToManyField(Standard, related_name='questions')
 
+    class Meta:
+        # --- ADD THIS META CLASS ---
+        # This ensures questions are always ordered by their number
+        ordering = ['question_number']
+
     def __str__(self):
-        return f"Q: {self.question_text} ({self.test.title})"
+        return f"Q{self.question_number}: {self.question_text} ({self.test.title})"
 
 # Represents a student's score on a specific question
 class Score(models.Model):

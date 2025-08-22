@@ -3,6 +3,13 @@ import { ref, onMounted } from 'vue';
 // --- CHANGED: Import our custom apiClient instead of the generic axios ---
 import apiClient from '@/api/axios';
 
+const props = defineProps({
+  classes: {
+    type: Array,
+    default: () => []
+  }
+});
+
 // Reactive state
 const classes = ref([]);
 const isLoading = ref(true);

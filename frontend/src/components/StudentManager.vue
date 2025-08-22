@@ -1,18 +1,25 @@
 <script setup>
 import { ref, watch } from 'vue';
-// --- CHANGED: Import our custom apiClient ---
 import apiClient from '@/api/axios';
 
 const props = defineProps({
   classes: { type: Array, required: true },
 });
 
+// --- STATE MANAGEMENT ---
 const selectedClassId = ref(null);
 const students = ref([]);
 const isLoading = ref(false);
 const error = ref(null);
-const form = ref({ first_name: '', last_name: '' });
 
+// Form for adding a new student
+const newStudentForm = ref({ first_name: '', last_name: '' });
+
+// --- NEW: State for the Edit Dialog ---
+const isEditDialogOpen = ref(false); // Controls if the dialog is visible
+const studentToEdit = ref(null); // Holds the data of the student being edited
+
+// --- WATCHER ---
 watch(selectedClassId, async (newId) => {
   if (newId) {
     await fetchStudents(newId);
@@ -21,12 +28,12 @@ watch(selectedClassId, async (newId) => {
   }
 });
 
+// --- API METHODS ---
 async function fetchStudents(classId) {
   isLoading.value = true;
   error.value = null;
   students.value = [];
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     const response = await apiClient.get(`/api/students/?search=${classId}`);
     students.value = response.data;
   } catch (err) {
@@ -38,63 +45,143 @@ async function fetchStudents(classId) {
 }
 
 async function handleAddStudent() {
-  if (!form.value.first_name.trim() || !form.value.last_name.trim()) {
-    alert('Both first and last name are required.');
-    return;
-  }
-  if (!selectedClassId.value) {
-    alert('Please select a class first.');
+  if (!newStudentForm.value.first_name.trim() || !newStudentForm.value.last_name.trim()) {
     return;
   }
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     await apiClient.post('/api/students/', {
-      ...form.value,
+      ...newStudentForm.value,
       biology_class: selectedClassId.value,
     });
-    form.value = { first_name: '', last_name: '' };
+    newStudentForm.value = { first_name: '', last_name: '' };
     await fetchStudents(selectedClassId.value);
   } catch (err) {
     alert('An error occurred while adding the student.');
     console.error(err);
   }
 }
+
+// --- NEW: Methods for Handling the Edit Dialog ---
+
+// This function is called when the "Edit" button is clicked.
+function openEditDialog(student) {
+  // Make a copy of the student object to avoid modifying the list directly.
+  studentToEdit.value = { ...student };
+  isEditDialogOpen.value = true;
+}
+
+// This function is called when the "Save" button in the dialog is clicked.
+async function handleUpdateStudent() {
+  if (!studentToEdit.value || !studentToEdit.value.first_name.trim() || !studentToEdit.value.last_name.trim()) {
+    return;
+  }
+  try {
+    // Send a PUT request to update the student data.
+    await apiClient.put(`/api/students/${studentToEdit.value.id}/`, studentToEdit.value);
+    
+    // Close the dialog and refresh the list to show the changes.
+    isEditDialogOpen.value = false;
+    await fetchStudents(selectedClassId.value);
+  } catch (err) {
+    alert('An error occurred while updating the student.');
+    console.error(err);
+  }
+}
 </script>
 
 <template>
-    <!-- The template for this component remains exactly the same -->
-    <div class="manager-container">
-        <div class="class-selector">
-            <label for="class-select">Select a Class to Manage Students:</label>
-            <select id="class-select" v-model="selectedClassId">
-                <option :value="null" disabled>-- Please choose a class --</option>
-                <option v-for="bioClass in classes" :key="bioClass.id" :value="bioClass.id">{{ bioClass.name }}</option>
-            </select>
-        </div>
-        <div v-if="selectedClassId" class="student-content">
-            <div v-if="isLoading">Loading students...</div>
-            <div v-else-if="error" class="error-message">{{ error }}</div>
-            <div v-else class="student-list">
-                <h4>Student Roster ({{ students.length }})</h4>
-                <ul v-if="students.length > 0">
-                    <li v-for="student in students" :key="student.id">{{ student.first_name }} {{ student.last_name }}</li>
-                </ul>
-                <p v-else>No students have been added to this class yet.</p>
-            </div>
-            <div class="form-container">
-                <h4>Add New Student to {{ classes.find(c => c.id === selectedClassId)?.name }}</h4>
-                <form @submit.prevent="handleAddStudent">
-                    <div class="form-group"><label for="first_name">First Name</label><input type="text" id="first_name" v-model="form.first_name" required /></div>
-                    <div class="form-group"><label for="last_name">Last Name</label><input type="text" id="last_name" v-model="form.last_name" required /></div>
-                    <button type="submit" class="btn-primary">Add Student</button>
-                </form>
-            </div>
-        </div>
+  <div class="manager-container">
+    <!-- Class Selector Dropdown -->
+    <div class="class-selector">
+      <label for="class-select">Select a Class to Manage Students:</label>
+      <v-select
+        id="class-select"
+        v-model="selectedClassId"
+        :items="classes"
+        item-title="name"
+        item-value="id"
+        label="-- Please choose a class --"
+        dense
+        solo
+      ></v-select>
     </div>
+
+    <!-- Student Management Content -->
+    <div v-if="selectedClassId" class="student-content">
+      <v-card>
+        <v-card-title>Student Roster ({{ students.length }})</v-card-title>
+        <v-card-text>
+          <div v-if="isLoading">Loading students...</div>
+          <div v-else-if="error" class="error-message">{{ error }}</div>
+          <v-list v-else lines="one">
+            <v-list-item v-for="student in students" :key="student.id">
+              <v-list-item-title>{{ student.first_name }} {{ student.last_name }}</v-list-item-title>
+              <template v-slot:append>
+                <!-- NEW: Edit Button -->
+                <v-btn icon="mdi-pencil" variant="text" size="small" @click="openEditDialog(student)"></v-btn>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+      </v-card>
+
+      <!-- Form to add a new student -->
+      <v-card>
+        <v-card-title>Add New Student to {{ classes.find(c => c.id === selectedClassId)?.name }}</v-card-title>
+        <v-card-text>
+          <v-form @submit.prevent="handleAddStudent">
+            <v-text-field label="First Name" v-model="newStudentForm.first_name" required></v-text-field>
+            <v-text-field label="Last Name" v-model="newStudentForm.last_name" required></v-text-field>
+            <v-btn type="submit" color="primary">Add Student</v-btn>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </div>
+
+    <!-- NEW: Edit Student Dialog (Modal) -->
+    <v-dialog v-model="isEditDialogOpen" max-width="500px">
+      <v-card>
+        <v-card-title>Edit Student</v-card-title>
+        <v-card-text>
+          <v-container>
+            <v-row>
+              <v-col cols="12">
+                <v-text-field
+                  label="First Name"
+                  v-model="studentToEdit.first_name"
+                  required
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  label="Last Name"
+                  v-model="studentToEdit.last_name"
+                  required
+                ></v-text-field>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="isEditDialogOpen = false">Cancel</v-btn>
+          <v-btn color="primary" @click="handleUpdateStudent">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
 </template>
 
 <style scoped>
-/* All styles from before remain the same */
-.class-selector{margin-bottom:2rem}.class-selector label{display:block;margin-bottom:.5rem}.class-selector select{width:100%;padding:10px;background-color:#2c3e50;border:1px solid #4a627f;color:#ecf0f1;border-radius:4px}.student-content{display:grid;grid-template-columns:1fr 1fr;gap:2rem}.student-list ul{list-style-type:none;padding:0;margin:0;background-color:#2c3e50;border-radius:4px}.student-list li{padding:12px;border-bottom:1px solid #34495e}.student-list li:last-child{border-bottom:none}.student-list h4,.form-container h4{margin-top:0}.form-group{margin-bottom:1rem}label{display:block;margin-bottom:5px;color:#bdc3c7}input[type="text"]{width:100%;padding:10px;background-color:#34495e;border:1px solid #4a627f;border-radius:4px;color:#ecf0f1;box-sizing:border-box}.btn-primary{background-color:#16a085;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer}
-.error-message { color: #e74c3c; }
+.manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.student-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+.error-message { color: rgb(var(--v-theme-error)); }
 </style>

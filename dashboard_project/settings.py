@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'allauth',
     'allauth.account',
+    'allauth.socialaccount', 
     'dj_rest_auth',
     'dj_rest_auth.registration',
     'biology_app',

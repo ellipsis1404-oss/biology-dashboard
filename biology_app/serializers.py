@@ -25,7 +25,7 @@ class QuestionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Question
-        fields = ['id', 'test', 'question_text', 'max_mark', 'standards']
+        fields = ['id', 'test', 'question_number' 'question_text', 'max_mark', 'standards']
 
 # --- Test Serializer ---
 class TestSerializer(serializers.ModelSerializer):
