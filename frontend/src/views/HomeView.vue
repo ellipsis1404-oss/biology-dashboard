@@ -3,6 +3,10 @@ import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import ClassSummaryCard from '@/components/ClassSummaryCard.vue';
 import CalendarWidget from '@/components/CalendarWidget.vue'; // <-- Import the new widget
+import apiClient from '@/api/axios';
+
+
+const response = await apiClient.get('/api/classes/');
 
 const classes = ref([]);
 const loadingError = ref(null);
