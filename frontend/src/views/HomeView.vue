@@ -6,10 +6,11 @@ import CalendarWidget from '@/components/CalendarWidget.vue'; // <-- Import the 
 import apiClient from '@/api/axios';
 
 
-const response = await apiClient.get('/api/classes/');
+
 
 const classes = ref([]);
 const loadingError = ref(null);
+const response = await apiClient.get('/api/classes/');
 
 onMounted(async () => {
   try {
