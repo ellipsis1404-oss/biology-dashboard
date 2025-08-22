@@ -1,7 +1,7 @@
 # biology_app/serializers.py
 
 from rest_framework import serializers
-from .models import BiologyClass, Student, Test, Question, Standard, Comment
+from .models import BiologyClass, Student, Test, Question, Standard, Comment, Score
 
 class BiologyClassSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,3 +46,12 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'first_name', 'last_name']
+
+class ScoreSerializer(serializers.ModelSerializer):
+    # We only need the IDs for student and question to map the scores on the frontend.
+    student = serializers.ReadOnlyField(source='student.id')
+    question = serializers.ReadOnlyField(source='question.id')
+
+    class Meta:
+        model = Score
+        fields = ['student', 'question', 'mark_awarded']

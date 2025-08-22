@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-// --- CHANGED: Import our custom apiClient ---
 import apiClient from '@/api/axios';
 
 const props = defineProps({
@@ -20,6 +19,39 @@ const newQuestionForm = ref({ question_text: '', max_mark: 1, standards: [] });
 const selectedClass = computed(() => props.classes.find(c => c.id === selectedClassId.value));
 const selectedTestDetails = computed(() => tests.value.find(t => t.id === selectedTest.value?.id));
 
+// --- WATCHER IS NOW ASYNC ---
+watch(selectedTest, async (newTest) => {
+  if (newTest) {
+    // 1. Build the empty grid structure first.
+    const newScores = {};
+    students.value.forEach(student => {
+      newScores[student.id] = {};
+      newTest.questions.forEach(question => {
+        newScores[student.id][question.id] = ''; // Default to empty string
+      });
+    });
+
+    // --- NEW: Fetch existing scores and populate the grid ---
+    try {
+      const response = await apiClient.get(`/api/tests/${newTest.id}/scores/`);
+      const existingScores = response.data;
+      
+      // 2. Loop through the fetched scores and fill in the grid.
+      existingScores.forEach(score => {
+        // Safety check to make sure the student and question still exist
+        if (newScores[score.student] && newScores[score.student][score.question] !== undefined) {
+          newScores[score.student][score.question] = score.mark_awarded;
+        }
+      });
+    } catch (err) {
+      console.error("Could not fetch existing scores:", err);
+    }
+    
+    // 3. Set the final, populated scores object.
+    scores.value = newScores;
+  }
+});
+
 watch(selectedClassId, async (newId) => {
   selectedTest.value = null; tests.value = []; students.value = []; scores.value = {};
   if (newId) {
@@ -29,48 +61,32 @@ watch(selectedClassId, async (newId) => {
   }
 });
 
-watch(selectedTest, (newTest) => {
-  if (newTest) {
-    const newScores = {};
-    students.value.forEach(student => {
-      newScores[student.id] = {};
-      newTest.questions.forEach(question => { newScores[student.id][question.id] = ''; });
-    });
-    scores.value = newScores;
-  }
-});
 
+// ... The rest of the script (all the async functions) remains exactly the same ...
 async function fetchTests(classId) {
   isLoading.value = true;
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     const response = await apiClient.get(`/api/tests/?search=${classId}`);
     tests.value = response.data;
   } catch (err) { console.error("Failed to fetch tests:", err); } 
   finally { isLoading.value = false; }
 }
-
 async function fetchStudents(classId) {
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     const response = await apiClient.get(`/api/students/?search=${classId}`);
     students.value = response.data;
   } catch (err) { console.error("Failed to fetch students:", err); }
 }
-
 async function fetchStandards() {
   if (standards.value.length > 0) return;
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     const response = await apiClient.get('/api/standards/');
     standards.value = response.data;
   } catch (err) { console.error("Failed to fetch standards:", err); }
 }
-
 async function handleCreateTest() {
   if (!newTestForm.value.title.trim()) return;
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     await apiClient.post('/api/tests/', {
       ...newTestForm.value,
       assigned_class: selectedClassId.value,
@@ -79,11 +95,9 @@ async function handleCreateTest() {
     await fetchTests(selectedClassId.value);
   } catch (err) { console.error("Failed to create test:", err); }
 }
-
 async function handleAddQuestion() {
   if (!newQuestionForm.value.question_text.trim() || !selectedTest.value) return;
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     await apiClient.post('/api/questions/', {
       ...newQuestionForm.value,
       test: selectedTest.value.id,
@@ -94,11 +108,9 @@ async function handleAddQuestion() {
     selectedTest.value = tests.value.find(t => t.id === currentlySelectedTestId);
   } catch (err) { console.error("Failed to add question:", err); }
 }
-
 async function handleSaveScores() {
   if (!selectedTest.value) return;
   try {
-    // --- CHANGED: Use apiClient and a relative URL ---
     await apiClient.post(`/api/tests/${selectedTest.value.id}/bulk_score_entry/`, {
       scores: scores.value
     });
@@ -184,5 +196,4 @@ async function handleSaveScores() {
 /* All styles from before remain the same */
 .step-container{background-color:#2c3e50;padding:1.5rem;border-radius:8px;margin-bottom:2rem}select,input[type="text"],input[type="date"],input[type="number"],button{padding:10px;border-radius:4px;border:1px solid #4a627f;background-color:#34495e;color:#ecf0f1;width:100%;box-sizing:border-box}select[multiple]{height:100px}button{background-color:#16a085;cursor:pointer;border-color:#16a085}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}.form-card{display:flex;flex-direction:column;gap:1rem}.questions-section{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}.question-list{list-style-type:none;padding:0;margin:0}.question-list li{padding:8px;background-color:#34495e;border-radius:4px;margin-bottom:5px}.score-grid-container{overflow-x:auto}.score-table{width:100%;border-collapse:collapse;margin-top:1rem}.score-table th,.score-table td{padding:8px;border:1px solid #4a627f;text-align:center}.score-table th{white-space:nowrap}.score-table td:first-child{text-align:left;white-space:nowrap}.score-table input{width:60px;text-align:center}.save-scores-btn{margin-top:1.5rem;width:auto;padding:12px 20px}
 label { font-size: 0.9em; color: #bdc3c7; margin-bottom: -5px; }
-.error-message { color: #e74c3c; }
 </style>
