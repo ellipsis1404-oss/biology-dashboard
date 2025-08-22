@@ -1,16 +1,16 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import apiClient from '@/api/axios';
 import ClassManager from '@/components/ClassManager.vue';
 import StudentManager from '@/components/StudentManager.vue';
-import TestManager from '@/components/TestManager.vue'; // <-- Import the new component
+import TestManager from '@/components/TestManager.vue';
 
 const classes = ref([]);
 const isLoadingClasses = ref(true);
 
 async function fetchClasses() {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/classes/');
+    const response = await apiClient.get('/api/classes/');
     classes.value = response.data;
   } catch (error) {
     console.error("Failed to load classes for admin view", error);
@@ -28,20 +28,15 @@ onMounted(fetchClasses);
       <h1>Admin Panel</h1>
       <p>Manage classes, students, tests, and scores from this page.</p>
     </header>
-
-    <!-- NEW SECTION FOR TEST MANAGEMENT -->
     <section class="admin-section">
       <h2>Manage Tests & Scores</h2>
       <div v-if="isLoadingClasses">Loading...</div>
-      <!-- Pass the classes list down to the TestManager -->
       <TestManager v-else :classes="classes" />
     </section>
-
     <section class="admin-section">
       <h2>Manage Classes</h2>
       <ClassManager />
     </section>
-
     <section class="admin-section">
       <h2>Manage Students</h2>
       <div v-if="isLoadingClasses">Loading...</div>
@@ -71,7 +66,7 @@ onMounted(fetchClasses);
   text-transform: uppercase;
   font-size: 0.9rem;
   letter-spacing: 1px;
-  border-bottom: 1px solid #2c3e50;
+  border-bottom: 1px solid #2c50;
   padding-bottom: 8px;
   margin-bottom: 1rem;
 }

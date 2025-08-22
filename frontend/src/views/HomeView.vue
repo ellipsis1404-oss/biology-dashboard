@@ -1,23 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import apiClient from '@/api/axios'; // Use the apiClient
 import ClassSummaryCard from '@/components/ClassSummaryCard.vue';
-import CalendarWidget from '@/components/CalendarWidget.vue'; // <-- Import the new widget
-import apiClient from '@/api/axios';
-
-
-
+import CalendarWidget from '@/components/CalendarWidget.vue';
 
 const classes = ref([]);
 const loadingError = ref(null);
-const response = await apiClient.get('/api/classes/');
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/classes/');
+    // Use the apiClient to make a relative request
+    const response = await apiClient.get('/api/classes/');
     classes.value = response.data;
   } catch (error) {
-    loadingError.value = "Failed to load the list of classes. Is the server running?";
+    loadingError.value = "Failed to load the list of classes. Is the backend server running?";
     console.error(loadingError.value, error);
   }
 });
@@ -25,7 +21,6 @@ onMounted(async () => {
 
 <template>
   <div>
-    <!-- The main layout is now a grid -->
     <div class="dashboard-grid">
       <div class="class-list-section">
         <h2>Classes</h2>
@@ -40,7 +35,6 @@ onMounted(async () => {
         </div>
       </div>
       
-      <!-- The new calendar section -->
       <div class="calendar-section">
         <h2>Calendar & Events</h2>
         <CalendarWidget />
@@ -52,10 +46,9 @@ onMounted(async () => {
 <style scoped>
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  grid-template-columns: 1fr 1fr;
   gap: 2rem;
 }
-
 .class-list-section h2, .calendar-section h2 {
   color: #95a5a6;
   font-weight: 500;

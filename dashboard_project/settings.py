@@ -6,20 +6,34 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# This will be 'False' on Render and 'True' on your local machine if you don't set the environment variable.
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+# --- SMARTER DEBUG AND HOST CONFIGURATION ---
 
-# Generate a new, strong secret key for production and store it as an environment variable on Render.
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key-for-development')
+# Render automatically sets an environment variable called 'RENDER'.
+# We check if this variable exists. If it does, we are in production.
+IS_PRODUCTION = 'RENDER' in os.environ
 
+if IS_PRODUCTION:
+    DEBUG = False
+else:
+    # If not on Render, we assume we are in local development.
+    DEBUG = True
+
+# The SECRET_KEY should always be an environment variable in production.
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key-for-local-development')
+
+# Configure ALLOWED_HOSTS based on the environment.
 ALLOWED_HOSTS = []
-# Render provides an environment variable with the public hostname.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# Application definition
+# Add localhost and 127.0.0.1 for local development.
+if not IS_PRODUCTION:
+    ALLOWED_HOSTS.append('127.0.0.1')
+    ALLOWED_HOSTS.append('localhost')
+
+# --- APPLICATION DEFINITION ---
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -34,7 +48,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # Add WhiteNoise middleware right after SecurityMiddleware
+    # WhiteNoise middleware is for serving static files in production.
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -65,52 +79,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dashboard_project.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+# --- DATABASE ---
 DATABASES = {
     'default': dj_database_url.config(
-        # Fallback to SQLite for local development
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
         conn_max_age=600
     )
 }
 
-# Password validation
-# ... (this section can remain as default)
-
-# Internationalization
-# ... (this section can remain as default)
-
-# Static files (CSS, JavaScript, Images)
+# --- STATIC FILES ---
 STATIC_URL = 'static/'
-# This is where Django will collect all static files for production.
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# This tells WhiteNoise to serve static files efficiently.
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS Settings (we will add the Cloudflare URL here later)
+# --- CORS (Cross-Origin Resource Sharing) SETTINGS ---
+# A single, clean configuration for CORS.
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-
-# Your AI Keys (leave them here, we will set them as environment variables on Render)
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
-
-# dashboard_project/settings.py (at the bottom)
-
-# ... Your AI Keys are above this ...
-
-# CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-# Read the production origins from the environment variable
-# This correctly handles a comma-separated string and adds it to our list
+# We also read the production URL from the environment variable on Render.
 CORS_PROD_ORIGINS = os.environ.get('CORS_PROD_ORIGINS', '').split(',')
 CORS_ALLOWED_ORIGINS.extend([origin for origin in CORS_PROD_ORIGINS if origin])
+
+# --- AI KEYS ---
+# We read these from environment variables in production.
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
