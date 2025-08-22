@@ -21,6 +21,7 @@ authStore.initializeStore();
       <!-- Only show these links if the user is authenticated -->
       <div v-if="authStore.isAuthenticated">
         <v-btn to="/" text>Dashboard</v-btn>
+        <v-btn to="/classes" text>Classes</v-btn> 
         <v-btn to="/admin" text>Admin</v-btn>
         <v-btn @click="authStore.logout()" text>Logout</v-btn>
       </div>

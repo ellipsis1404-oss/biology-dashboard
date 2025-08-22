@@ -7,13 +7,27 @@ import HomeView from '../views/HomeView.vue'
 import ClassDetailView from '../views/ClassDetailView.vue'
 import AdminView from '../views/AdminView.vue'
 import LoginView from '../views/LoginView.vue'
+import ClassesView from '../views/ClassesView.vue';
 
 const routes = [
   // ... your routes array is correct, no changes needed here ...
   { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
   { path: '/classes/:id', name: 'class-detail', component: ClassDetailView, meta: { requiresAuth: true } },
   { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true } },
-  { path: '/login', name: 'login', component: LoginView }
+  { path: '/login', name: 'login', component: LoginView },
+
+  { path: '/classes',
+    name: 'classes',
+    component: ClassesView,
+    meta: { requiresAuth: true }
+  },
+
+  {
+    path: '/classes/:id',
+    name: 'class-detail',
+    component: ClassDetailView,
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({
