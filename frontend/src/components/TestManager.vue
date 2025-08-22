@@ -18,10 +18,12 @@ const selectedTestDetails = ref(null);
 const scores = ref({});
 const isLoadingTests = ref(false);
 const isLoadingDetails = ref(false);
-const newTestForm = ref({ title: '', date_administered: new Date().toISOString().split('T')[0] });
+const newTestForm = ref({ title: '', date_administered: new Date().toISOString().split('T')[0], test_file_link: '' });
 const newQuestionForm = ref({ question_number: 1, question_text: '', max_mark: 1, standards: [] });
 const isQuestionEditDialogOpen = ref(false);
 const questionToEdit = ref(null);
+const isTestEditDialogOpen = ref(false);
+const testToEdit = ref(null);
 watch(selectedClassId, async (newId) => {
   selectedTestId.value = null; selectedTestDetails.value = null; tests.value = []; students.value = []; scores.value = {};
   if (newId) { await fetchTests(newId); await fetchStudents(newId); await fetchStandards(); }
@@ -61,11 +63,7 @@ async function fetchStandards() {
   try { const response = await apiClient.get('/api/standards/'); standards.value = response.data; }
   catch (err) { console.error("Failed to fetch standards:", err); }
 }
-async function handleCreateTest() {
-  if (!newTestForm.value.title.trim()) return;
-  try { const response = await apiClient.post('/api/tests/', { ...newTestForm.value, assigned_class: selectedClassId.value }); newTestForm.value.title = ''; await fetchTests(selectedClassId.value); selectedTestId.value = response.data.id; }
-  catch (err) { console.error("Failed to create test:", err); }
-}
+
 async function handleAddQuestion() {
   if (!newQuestionForm.value.question_text.trim() || !selectedTestDetails.value) return;
   try {
@@ -95,6 +93,35 @@ async function handleSaveScores() {
     alert('Scores saved successfully!');
   } catch (err) { alert('Failed to save scores. Check console for details.'); console.error("Failed to save scores:", err); }
 }
+
+async function handleCreateTest() {
+  if (!newTestForm.value.title.trim()) return;
+  try {
+    const response = await apiClient.post('/api/tests/', { ...newTestForm.value, assigned_class: selectedClassId.value });
+    newTestForm.value = { title: '', date_administered: new Date().toISOString().split('T')[0], test_file_link: '' };
+    await fetchTests(selectedClassId.value);
+    selectedTestId.value = response.data.id;
+  } catch (err) { console.error("Failed to create test:", err); }
+}
+
+function openTestEditDialog() {
+    if (!selectedTestDetails.value) return;
+    testToEdit.value = { ...selectedTestDetails.value };
+    isTestEditDialogOpen.value = true;
+}
+
+async function handleUpdateTest() {
+    if (!testToEdit.value) return;
+    try {
+        await apiClient.put(`/api/tests/${testToEdit.value.id}/`, testToEdit.value);
+        isTestEditDialogOpen.value = false;
+        await fetchTests(selectedClassId.value); // Refresh the dropdown list
+        await fetchTestDetails(testToEdit.value.id); // Refresh the details view
+    } catch (err) {
+        alert('Failed to update test.');
+        console.error(err);
+    }
+}
 </script>
 
 <template>
@@ -107,9 +134,9 @@ async function handleSaveScores() {
       <v-card-title>Step 2: Create or Select a Test for {{ classes.find(c => c.id === selectedClassId)?.name }}</v-card-title>
       <v-row class="pa-4">
         <v-col cols="12" md="6">
-          <v-form @submit.prevent="handleCreateTest"><v-text-field v-model="newTestForm.title" label="New Test Title" variant="outlined" class="mb-2"></v-text-field><v-text-field v-model="newTestForm.date_administered" label="Date Administered" type="date" variant="outlined" class="mb-2"></v-text-field><v-btn type="submit" color="primary">Create Test</v-btn></v-form>
+          <v-form @submit.prevent="handleCreateTest"><v-text-field v-model="newTestForm.title" label="New Test Title" variant="outlined" class="mb-2"></v-text-field><v-text-field v-model="newTestForm.date_administered" label="Date Administered" type="date" variant="outlined" class="mb-2"></v-text-field><v-text-field v-model="newTestForm.test_file_link" label="Google Drive Link (Optional)" variant="outlined" class="mb-2"></v-text-field><v-btn type="submit" color="primary">Create Test</v-btn></v-form>
         </v-col>
-        <v-col cols="12" md="6"><v-select v-model="selectedTestId" :items="tests" item-title="title" item-value="id" label="Select Existing Test" dense variant="outlined" :loading="isLoadingTests" hide-details></v-select></v-col>
+        <v-col cols="12" md="6"><v-select v-model="selectedTestId" :items="tests" item-title="title" item-value="id" label="Select Existing Test" dense variant="outlined" :loading="isLoadingTests" hide-details></v-select><v-btn v-if="selectedTestId" @click="openTestEditDialog" color="secondary" class="mt-4">Edit Selected Test</v-btn></v-col>
       </v-row>
     </v-card>
 

@@ -61,7 +61,18 @@ const chartOptions = {
     <div v-else-if="error"><p class="error-message">{{ error }}</p></div>
     <div v-else-if="classData">
       <header class="page-header">
+        
         <h1>{{ classData.class_info.name }}</h1>
+        <v-btn 
+            v-if="classData.summary.test_file_link"
+            :href="classData.summary.test_file_link"
+            target="_blank"
+            color="blue-lighten-2"
+            prepend-icon="mdi-link-variant"
+          >
+            View Test File
+        </v-btn>
+      
         <p>{{ classData.class_info.description || 'Class details and overview.' }}</p>
       </header>
       <div class="content-grid">

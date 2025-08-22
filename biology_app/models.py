@@ -50,6 +50,7 @@ class Test(models.Model):
     date_administered = models.DateField()
     # A test is assigned to a specific class
     assigned_class = models.ForeignKey(BiologyClass, related_name='tests', on_delete=models.CASCADE)
+    test_file_link = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return f"{self.title} for {self.assigned_class.name}"

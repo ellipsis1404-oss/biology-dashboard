@@ -31,7 +31,7 @@ class TestListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Test
         # This simple version only includes basic fields for the list view
-        fields = ['id', 'title', 'date_administered', 'assigned_class']
+        fields = ['id', 'title', 'date_administered', 'assigned_class', 'test_file_link']
 
 # --- Test Serializer ---
 class TestSerializer(serializers.ModelSerializer):
@@ -39,7 +39,7 @@ class TestSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Test
-        fields = ['id', 'title', 'date_administered', 'assigned_class', 'questions']
+        fields = ['id', 'title', 'date_administered', 'assigned_class', 'questions', 'test_file_link']
 
 # --- Comment Serializer ---
 class CommentSerializer(serializers.ModelSerializer):
