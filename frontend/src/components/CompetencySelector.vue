@@ -112,6 +112,13 @@ watch(() => props.modelValue, (newValue) => {
                   <template v-slot:prepend>
                     <v-checkbox-btn v-model="tempSelection" :value="standard.id"></v-checkbox-btn>
                   </template>
+                   <v-tooltip location="end" :text="standard.description">
+        <template v-slot:activator="{ props }">
+          <v-list-item-title v-bind="props">
+            {{ standard.code }} - {{ standard.description }}
+          </v-list-item-title>
+        </template>
+      </v-tooltip>
                   <v-list-item-title>{{ standard.code }} - {{ standard.description }}</v-list-item-title>
                 </v-list-item>
               </v-list>
