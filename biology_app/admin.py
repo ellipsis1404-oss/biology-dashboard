@@ -25,10 +25,17 @@ class StandardAdmin(admin.ModelAdmin):
         if request.method == "POST":
             form = StandardUploadForm(request.POST, request.FILES)
             if form.is_valid():
-                excel_file = request.FILES["file"]
+                uploaded_file = request.FILES["file"]
                 try:
-                    # Read the excel file into a pandas DataFrame
-                    df = pd.read_excel(excel_file)
+                    # Check the file extension to decide which pandas function to use
+                    if uploaded_file.name.endswith('.xlsx'):
+                        df = pd.read_excel(uploaded_file)
+                    elif uploaded_file.name.endswith('.csv'):
+                        df = pd.read_csv(uploaded_file)
+                    else:
+                        # If the file is not an excel or csv, show an error
+                        self.message_user(request, "Unsupported file format. Please upload a .xlsx or .csv file.", level=messages.ERROR)
+                        return redirect(".") # Redirect back to the upload page
                     
                     # Loop through each row in the DataFrame
                     for index, row in df.iterrows():
