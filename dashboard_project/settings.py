@@ -99,3 +99,18 @@ CORS_ALLOWED_ORIGINS = [
 # Your AI Keys (leave them here, we will set them as environment variables on Render)
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
+
+# dashboard_project/settings.py (at the bottom)
+
+# ... Your AI Keys are above this ...
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Read the production origins from the environment variable
+# This correctly handles a comma-separated string and adds it to our list
+CORS_PROD_ORIGINS = os.environ.get('CORS_PROD_ORIGINS', '').split(',')
+CORS_ALLOWED_ORIGINS.extend([origin for origin in CORS_PROD_ORIGINS if origin])
