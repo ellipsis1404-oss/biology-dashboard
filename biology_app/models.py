@@ -44,13 +44,24 @@ class Standard(models.Model):
 
 # ... (other models like Test, Question should be below this) ...
 
+class TestManager(models.Manager):
+    def get_queryset(self):
+        # By default, only return tests that are not archived.
+        return super().get_queryset().filter(is_archived=False)
+
 # Represents a test or assessment
 class Test(models.Model):
     title = models.CharField(max_length=200)
     date_administered = models.DateField()
-    # A test is assigned to a specific class
     assigned_class = models.ForeignKey(BiologyClass, related_name='tests', on_delete=models.CASCADE)
     test_file_link = models.URLField(max_length=500, blank=True, null=True)
+    
+    # --- NEW: The soft-delete flag ---
+    is_archived = models.BooleanField(default=False)
+
+    # --- NEW: Connecting our managers ---
+    objects = TestManager() # The default manager only sees active tests.
+    all_objects = models.Manager() # A second manager to see ALL tests.
 
     def __str__(self):
         return f"{self.title} for {self.assigned_class.name}"

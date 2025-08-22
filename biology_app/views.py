@@ -174,14 +174,39 @@ class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
 
 class TestViewSet(viewsets.ModelViewSet):
-    queryset = Test.objects.all()
+    # The default queryset now correctly uses our custom manager to hide archived tests
+    queryset = Test.objects.all() 
     serializer_class = TestSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['=assigned_class__id']
+    
+    def get_queryset(self):
+        # If the client asks to see archived tests, use the 'all_objects' manager
+        if self.request.query_params.get('include_archived') == 'true':
+            return Test.all_objects.all()
+        # Otherwise, use the default manager (which hides archived tests)
+        return Test.objects.all()
+
     def get_serializer_class(self):
         if self.action == 'list':
             return TestListSerializer
         return TestSerializer
+
+    # --- OVERRIDE: This now "archives" instead of deleting ---
+    def perform_destroy(self, instance):
+        instance.is_archived = True
+        instance.save()
+
+    # --- NEW: Action to restore an archived test ---
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        # Use 'all_objects' to find the test, even if it's archived
+        test = Test.all_objects.get(pk=pk)
+        test.is_archived = False
+        test.save()
+        return Response({'status': 'Test restored'})
+
+    # ... (bulk_score_entry and scores actions are unchanged) ...
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def bulk_score_entry(self, request, pk=None):
