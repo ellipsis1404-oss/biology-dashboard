@@ -20,6 +20,8 @@ const showArchived = ref(false);
 const isConfirmDialogOpen = ref(false);
 const testToAction = ref(null);
 const actionType = ref('');
+const pastedScoresText = ref('');
+
 
 const newTestForm = ref({ title: '', date_administered: new Date().toISOString().split('T')[0], test_file_link: '' });
 const newQuestionForm = ref({ question_number: 1, question_text: '', max_mark: 1, standards: [] });
@@ -43,15 +45,63 @@ watch(showArchived, () => {
     if (selectedClassId.value) { fetchTests(selectedClassId.value); }
 });
 watch(selectedTestDetails, async (newTest) => {
-  if (newTest && newTest.questions) {
-    const newScores = {}; students.value.forEach(student => { newScores[student.id] = {}; newTest.questions.forEach(question => { newScores[student.id][question.id] = ''; }); });
-    scores.value = newScores;
+  if (newTest && newTest.questions && newTest.questions.length > 0) {
+    let existingScoresMap = {};
     try {
       const response = await apiClient.get(`/api/tests/${newTest.id}/scores/`);
-      response.data.forEach(score => { if (scores.value[score.student] && scores.value[score.student][score.question] !== undefined) { scores.value[score.student][score.question] = score.mark_awarded; } });
+      response.data.forEach(score => {
+        existingScoresMap[`${score.student}-${score.question}`] = score.mark_awarded;
+      });
     } catch (err) { console.error("Could not fetch existing scores:", err); }
+    const populatedScores = {};
+    students.value.forEach(student => {
+      populatedScores[student.id] = {};
+      newTest.questions.forEach(question => {
+        const scoreKey = `${student.id}-${question.id}`;
+        populatedScores[student.id][question.id] = existingScoresMap[scoreKey] || '';
+      });
+    });
+    scores.value = populatedScores;
+  } else {
+    scores.value = {};
   }
 });
+
+function setActiveInput(studentId, questionId) {
+    activeScoreInputId.value = `score-input-${studentId}-${questionId}`;
+}
+
+function parseAndPopulateScores() {
+    if (!pastedScoresText.value.trim()) {
+        alert("Please paste score data into the text area first.");
+        return;
+    }
+
+    const rows = pastedScoresText.value.trim().split(/\r?\n/);
+
+    if (rows.length !== students.value.length) {
+        alert(`Error: The number of pasted rows (${rows.length}) does not match the number of students (${students.value.length}). Please ensure you copied the correct data.`);
+        return;
+    }
+
+    const studentIds = students.value.map(s => s.id);
+    const questionIds = selectedTestDetails.value.questions.map(q => q.id);
+
+    rows.forEach((row, rowIndex) => {
+        const studentId = studentIds[rowIndex];
+        const cells = row.split('\t'); // Split by tabs, which is what Excel/Sheets uses
+        cells.forEach((cell, colIndex) => {
+            if (colIndex < questionIds.length) {
+                const questionId = questionIds[colIndex];
+                scores.value[studentId][questionId] = cell.trim();
+            }
+        });
+    });
+
+    // Clear the textarea after successful parsing
+    pastedScoresText.value = '';
+    alert("Scores populated successfully! Review the grid and click 'Save All Scores'.");
+}
 
 async function fetchTests(classId) {
   isLoadingTests.value = true;
@@ -250,12 +300,49 @@ async function confirmAction() {
       <v-card>
         <v-card-title>Step 4: Enter Scores (Bulk)</v-card-title>
         <v-card-text>
-          <div v-if="students.length && selectedTestDetails.questions.length" class="score-grid-container">
-            <v-table density="compact">
-              <thead><tr><th class="text-left">Student Name</th><th v-for="q in selectedTestDetails.questions" :key="q.id" class="text-center">Q{{ q.question_number }} ({{ q.max_mark }})</th></tr></thead>
-              <tbody><tr v-for="student in students" :key="student.id"><td>{{ student.first_name }} {{ student.last_name }}</td><td v-for="q in selectedTestDetails.questions" :key="q.id"><v-text-field v-model.number="scores[student.id][q.id]" :max="q.max_mark" min="0" type="number" density="compact" hide-details variant="outlined"></v-text-field></td></tr></tbody>
-            </v-table>
-            <v-btn @click="handleSaveScores" color="primary" class="mt-4">Save All Scores</v-btn>
+          <div v-if="students.length && selectedTestDetails.questions.length">
+            
+            <!-- NEW: Paste from Spreadsheet section -->
+            <v-card variant="tonal" class="mb-6">
+                <v-card-title class="text-subtitle-1">Paste from Spreadsheet</v-card-title>
+                <v-card-subtitle>Copy the block of scores (without headers or names) from Excel/Sheets and paste here.</v-card-subtitle>
+                <v-card-text>
+                    <v-textarea
+                        v-model="pastedScoresText"
+                        label="Paste scores here..."
+                        rows="5"
+                        variant="outlined"
+                        clearable
+                    ></v-textarea>
+                    <v-btn @click="parseAndPopulateScores" color="secondary">Parse & Populate Grid</v-btn>
+                </v-card-text>
+            </v-card>
+
+            <!-- The score grid is now just for display and final edits -->
+            <div class="score-grid-container">
+              <v-table density="compact">
+                <thead><tr><th class="text-left">Student Name</th><th v-for="q in selectedTestDetails.questions" :key="q.id" class="text-center">Q{{ q.question_number }} ({{ q.max_mark }})</th></tr></thead>
+                <tbody>
+                  <tr v-for="student in students" :key="student.id">
+                    <td>{{ student.first_name }} {{ student.last_name }}</td>
+                    <td v-for="q in selectedTestDetails.questions" :key="q.id" v-if="scores[student.id]">
+                      <!-- No paste/focus listeners needed here anymore -->
+                      <v-text-field
+                        :id="`score-input-${student.id}-${q.id}`"
+                        v-model.number="scores[student.id][q.id]"
+                        :max="q.max_mark"
+                        min="0"
+                        type="number"
+                        density="compact"
+                        hide-details
+                        variant="outlined"
+                      ></v-text-field>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+              <v-btn @click="handleSaveScores" color="primary" class="mt-4">Save All Scores</v-btn>
+            </div>
           </div>
           <p v-else>Please add students to this class and questions to this test to enter scores.</p>
         </v-card-text>
