@@ -1,12 +1,21 @@
 <script setup>
-// The <script> section is unchanged and correct.
 import { ref, computed, watch } from 'vue';
-const props = defineProps({ standards: { type: Array, required: true }, modelValue: { type: Array, required: true } });
+
+// --- PROPS & EMITS ---
+const props = defineProps({
+  standards: { type: Array, required: true },
+  modelValue: { type: Array, required: true },
+});
 const emit = defineEmits(['update:modelValue']);
+
+// --- COMPONENT STATE ---
 const isDialogOpen = ref(false);
-const tempSelection = ref([...props.modelValue]);
+const tempSelection = ref([]);
 const activeLevel = ref(null);
 const activeUnit = ref(null);
+
+
+// --- COMPUTED PROPERTIES (Now without side-effects) ---
 const structuredStandards = computed(() => {
   if (!props.standards.length) return {};
   return props.standards.reduce((acc, standard) => {
@@ -18,26 +27,35 @@ const structuredStandards = computed(() => {
     return acc;
   }, {});
 });
+
 const levels = computed(() => Object.keys(structuredStandards.value));
+
 const units = computed(() => {
   if (!activeLevel.value || !structuredStandards.value[activeLevel.value]) return [];
   return Object.keys(structuredStandards.value[activeLevel.value]);
 });
+
 const competencies = computed(() => {
   if (!activeLevel.value || !activeUnit.value || !structuredStandards.value[activeLevel.value][activeUnit.value]) return [];
   return structuredStandards.value[activeLevel.value][activeUnit.value];
 });
+
 const standardsMap = computed(() => {
   return props.standards.reduce((map, standard) => {
     map[standard.id] = standard;
     return map;
   }, {});
 });
+
 const selectedStandards = computed(() => {
   return props.modelValue.map(id => standardsMap.value[id]).filter(Boolean);
 });
+
+
+// --- METHODS ---
 function openDialog() {
   tempSelection.value = [...props.modelValue];
+  // If no level is selected yet, default to the first one.
   if (!activeLevel.value && levels.value.length > 0) {
     activeLevel.value = levels.value[0];
   }
@@ -50,11 +68,17 @@ function confirmSelection() {
 function cancelSelection() {
   isDialogOpen.value = false;
 }
+
+
+// --- WATCHERS (The correct place for side-effects) ---
 watch(activeLevel, (newLevel) => {
+    // When the level changes, automatically select the first unit of that new level.
     const newUnits = Object.keys(structuredStandards.value[newLevel] || {});
     activeUnit.value = newUnits.length > 0 ? newUnits[0] : null;
 });
+
 watch(() => props.modelValue, (newValue) => {
+    // Keep the internal temporary selection in sync with the parent.
     tempSelection.value = [...newValue];
 });
 </script>
@@ -81,10 +105,7 @@ watch(() => props.modelValue, (newValue) => {
       <v-card>
         <v-card-title>Select Competencies</v-card-title>
         <v-divider></v-divider>
-
-        <!-- The main content area is now a flex container -->
         <v-card-text class="dialog-content-grid">
-            <!-- Column 1: Level Selection -->
             <div class="column">
               <v-list-subheader>LEVEL</v-list-subheader>
               <v-list class="scrollable-list" dense>
@@ -93,8 +114,6 @@ watch(() => props.modelValue, (newValue) => {
                 </v-list-item>
               </v-list>
             </div>
-
-            <!-- Column 2: Unit Selection -->
             <div class="column">
               <v-list-subheader>UNIT</v-list-subheader>
               <v-list class="scrollable-list" dense>
@@ -103,28 +122,33 @@ watch(() => props.modelValue, (newValue) => {
                 </v-list-item>
               </v-list>
             </div>
-            
-            <!-- Column 3: Competency Selection -->
+            <!-- NEW (With a Better Tooltip) -->
             <div class="column">
-               <v-list-subheader>COMPETENCIES</v-list-subheader>
-               <v-list class="scrollable-list" dense>
+            <v-list-subheader>COMPETENCIES</v-list-subheader>
+            <v-list class="scrollable-list" dense>
                 <v-list-item v-for="standard in competencies" :key="standard.id" @click.stop>
-                  <template v-slot:prepend>
+                <template v-slot:prepend>
                     <v-checkbox-btn v-model="tempSelection" :value="standard.id"></v-checkbox-btn>
-                  </template>
-                   <v-tooltip location="end" :text="standard.description">
-        <template v-slot:activator="{ props }">
-          <v-list-item-title v-bind="props">
-            {{ standard.code }} - {{ standard.description }}
-          </v-list-item-title>
-        </template>
-      </v-tooltip>
-                  <v-list-item-title>{{ standard.code }} - {{ standard.description }}</v-list-item-title>
+                </template>
+
+                <!-- Add the v-tooltip wrapper here -->
+                <v-tooltip 
+                    location="end" 
+                    :text="standard.description"
+                    max-width="400px" 
+                >
+                    <template v-slot:activator="{ props }">
+                    <v-list-item-title v-bind="props">
+                        {{ standard.code }} - {{ standard.description }}
+                    </v-list-item-title>
+                    </template>
+                </v-tooltip>
+                <!-- End of tooltip wrapper -->
+
                 </v-list-item>
-              </v-list>
+            </v-list>
             </div>
         </v-card-text>
-
         <v-divider></v-divider>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -141,26 +165,10 @@ watch(() => props.modelValue, (newValue) => {
 .competency-input:hover { border-color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
 .placeholder { color: grey; }
 .unit-title { white-space: normal; }
-
-.dialog-content-grid {
-  display: flex;
-  flex-direction: row;
-  height: 60vh; /* Give the content area a fixed height relative to the viewport */
-  max-height: 550px;
-}
-.column {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-}
-.column:last-child {
-  border-right: none;
-}
-.scrollable-list {
-  flex-grow: 1; /* This makes the list take up all available vertical space */
-  overflow-y: auto; /* This adds the scrollbar ONLY when needed */
-}
+.dialog-content-grid { display: flex; flex-direction: row; height: 60vh; max-height: 550px; }
+.column { display: flex; flex-direction: column; height: 100%; border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12); }
+.column:last-child { border-right: none; }
+.scrollable-list { flex-grow: 1; overflow-y: auto; }
 .column:nth-child(1) { flex-basis: 25%; flex-shrink: 0; }
 .column:nth-child(2) { flex-basis: 35%; flex-shrink: 0; }
 .column:nth-child(3) { flex-basis: 40%; flex-shrink: 0; }

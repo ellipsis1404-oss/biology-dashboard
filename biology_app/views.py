@@ -24,7 +24,7 @@ class BiologyClassViewSet(viewsets.ModelViewSet):
     def details(self, request, pk=None):
         biology_class = self.get_object()
         latest_test = Test.objects.filter(assigned_class=biology_class).order_by('-date_administered').first()
-        students_in_class = Student.objects.filter(biology_class=biology_class).order_by('last_name', 'first_name')
+        students_in_class = Student.objects.filter(biology_class=biology_class).order_by('first_name', 'last_name')
         student_serializer = StudentDetailSerializer(students_in_class, many=True)
         if not latest_test:
             return Response({
@@ -32,11 +32,13 @@ class BiologyClassViewSet(viewsets.ModelViewSet):
                 'students': student_serializer.data,
                 'summary': { "message": "No tests found for this class." }
             })
+        active_test_filter = Q(score__question__test__is_archived=False)
+
         students_performance = Student.objects.filter(
             biology_class=biology_class
         ).annotate(
-            total_awarded=Sum('score__mark_awarded', filter=Q(score__question__test=latest_test)),
-            total_possible=Sum('score__question__max_mark', filter=Q(score__question__test=latest_test)),
+            total_awarded=Sum('score__mark_awarded', filter=Q(score__question__test=latest_test) & (active_test_filter)),
+            total_possible=Sum('score__question__max_mark', filter=Q(score__question__test=latest_test)&(active_test_filter)),
             percentage=Case(When(total_possible__gt=0, then=(F('total_awarded') * 100.0) / F('total_possible')), default=0.0, output_field=FloatField())
         ).order_by('-percentage')
         average_data = students_performance.aggregate(avg_percent=Avg('percentage'))
@@ -67,7 +69,7 @@ class BiologyClassViewSet(viewsets.ModelViewSet):
         return Response(response_data)
 
 class StudentViewSet(viewsets.ModelViewSet):
-    queryset = Student.objects.all().order_by('last_name', 'first_name')
+    queryset = Student.objects.all().order_by('first_name','last_name')
     serializer_class = StudentSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['=biology_class__id']
@@ -77,7 +79,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         student = self.get_object()
         comments = student.comments.order_by('-created_at')
         comment_serializer = CommentSerializer(comments, many=True)
-        standards_performance = Standard.objects.filter(questions__score__student=student).distinct().annotate(total_awarded=Sum('questions__score__mark_awarded', filter=Q(questions__score__student=student)), total_possible=Sum('questions__max_mark', filter=Q(questions__score__student=student)), percentage=Case(When(total_possible__gt=0, then=(F('total_awarded') * 100.0) / F('total_possible')), default=0.0, output_field=FloatField())).values('id', 'unit', 'code', 'description', 'percentage')
+        standards_performance = Standard.objects.filter(questions__score__student=student, questions__test__is_archived=False).distinct().annotate(total_awarded=Sum('questions__score__mark_awarded', filter=Q(questions__score__student=student, questions__test__is_archived=False)), total_possible=Sum('questions__max_mark', filter=Q(questions__score__student=student)), percentage=Case(When(total_possible__gt=0, then=(F('total_awarded') * 100.0) / F('total_possible')), default=0.0, output_field=FloatField())).values('id', 'unit', 'code', 'description', 'percentage')
         response_data = {'student_info': StudentDetailSerializer(student).data, 'comments': comment_serializer.data, 'standards_performance': list(standards_performance)}
         return Response(response_data)
 
@@ -240,7 +242,7 @@ def dashboard_stats(request):
         latest_test = Test.objects.filter(assigned_class=bio_class).order_by('-date_administered').first()
         if latest_test:
             avg_data = Score.objects.filter(
-                question__test=latest_test
+                question__test=latest_test, question__test__is_archived=False
             ).aggregate(
                 avg_percent=Avg(
                     (F('mark_awarded') * 100.0) / F('question__max_mark'),
