@@ -9,9 +9,9 @@ from .forms import StandardUploadForm
 
 @admin.register(Standard)
 class StandardAdmin(admin.ModelAdmin):
-    list_display = ('code', 'level', 'unit', 'description')
-    list_filter = ('level', 'unit') # Adds filters on the right side
-    search_fields = ('code', 'description', 'unit') # Adds a search bar
+    list_display = ('code', 'level', 'chapter', 'chapter_order', 'unit', 'unit_order', 'description')
+    list_filter = ('level', 'chapter', 'unit') # Adds filters on the right side
+    search_fields = ('code', 'description', 'unit','chapter') # Adds a search bar
 
     def get_urls(self):
         urls = super().get_urls()
@@ -41,10 +41,13 @@ class StandardAdmin(admin.ModelAdmin):
                     for index, row in df.iterrows():
                         # Use update_or_create to avoid duplicates based on the 'code'
                         Standard.objects.update_or_create(
+                            level=row['level'],
                             code=row['code'],
                             defaults={
-                                'level': row['level'],
+                                'chapter': row['chapter'],
+                                'chapter_order': row['chapter_order'],                              
                                 'unit': row['unit'],
+                                'unit_order': row['unit_order'],
                                 'description': row['description'],
                             }
                         )

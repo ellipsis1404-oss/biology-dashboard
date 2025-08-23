@@ -24,9 +24,7 @@ class Student(models.Model):
 
 # ... (other models like BiologyClass, Student should be above this) ...
 
-# Represents a skill or standard, e.g., "Cellular Respiration"
 class Standard(models.Model):
-    # Define choices for the level
     LEVEL_CHOICES = [
         ('IGCSE', 'IGCSE'),
         ('AS', 'AS Level'),
@@ -34,15 +32,29 @@ class Standard(models.Model):
     ]
 
     level = models.CharField(max_length=5, choices=LEVEL_CHOICES)
-    unit = models.CharField(max_length=100) # e.g., "Unit 1: Cell Biology"
-    code = models.CharField(max_length=20, unique=True) # e.g., "1.1a", unique=True ensures no duplicate codes
-    description = models.TextField() # e.g., "Understand the process of cellular respiration"
+    
+    # --- NEW: Fields for ordering and grouping ---
+    chapter = models.CharField(max_length=100) # e.g., "Chapter 1: Cell Structure"
+    chapter_order = models.PositiveIntegerField(default=0) # A number to sort chapters by, e.g., 1
+    
+    unit = models.CharField(max_length=100)
+    unit_order = models.PositiveIntegerField(default=0) # A number to sort units within a chapter
+    
+    # --- MODIFIED: 'code' is no longer unique by itself ---
+    code = models.CharField(max_length=20) 
+    
+    description = models.TextField()
+
+    class Meta:
+        # --- NEW: This is the correct uniqueness rule ---
+        # It allows ('IGCSE', '1.1.1') and ('AS', '1.1.1') to coexist.
+        unique_together = ('level', 'code')
+        
+        # --- NEW: This enforces the correct sorting order everywhere ---
+        ordering = ['level', 'chapter_order', 'unit_order', 'code']
 
     def __str__(self):
-        # A much more descriptive name when we see it in the admin panel
         return f"{self.code} ({self.level}) - {self.description[:50]}..."
-
-# ... (other models like Test, Question should be below this) ...
 
 class TestManager(models.Manager):
     def get_queryset(self):
